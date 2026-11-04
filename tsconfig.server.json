@@ -20,6 +20,7 @@
   },
   "include": [
     "src/server.ts",
+    "src/auth.ts",
     "src/models/**/*.ts",
     "src/core/**/*.ts",
     "src/shared/**/*.ts",

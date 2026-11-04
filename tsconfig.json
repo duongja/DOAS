@@ -20,6 +20,7 @@
   "include": [
     "src/main.ts",
     "src/assistant.ts",
+    "src/login.ts",
     "src/client/**/*.ts",
     "src/lib/**/*.ts",
     "src/core/**/*.ts",

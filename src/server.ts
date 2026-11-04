@@ -9,6 +9,7 @@ import {
   runAssistant,
 } from './assistant/agent';
 import { getAssistantStatus } from './assistant/config';
+import { registerAuthRoutes, requireAuth } from './auth';
 import {
   ConversationServiceError,
   createConversation,
@@ -185,6 +186,9 @@ if (NODE_ENV !== 'test') {
     next();
   });
 }
+
+registerAuthRoutes(app);
+app.use('/api', requireAuth);
 
 /* ————————————————————————————————————————————————
    Validation

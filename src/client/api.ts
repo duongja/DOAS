@@ -20,6 +20,7 @@ import type {
   MemoryPageDTO,
   ProjectDTO,
 } from '../shared/assistant';
+import { redirectToLogin } from './auth';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -50,6 +51,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       'Unable to reach the API. Check that the Express server and MongoDB are running.',
       0,
     );
+  }
+
+  if (response.status === 401) {
+    redirectToLogin();
+    throw new ApiError('Authentication required.', 401);
   }
 
   const contentType = response.headers.get('content-type') ?? '';

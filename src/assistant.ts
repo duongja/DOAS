@@ -1,4 +1,5 @@
 import { ApiError, api } from './client/api';
+import { logout, requireAuth } from './client/auth';
 import type {
   AssistantStatusDTO,
   ChatMessageDTO,
@@ -45,6 +46,7 @@ const sidebarToggle = byId<HTMLButtonElement>('sidebar-toggle');
 const sidebarBackdrop = byId<HTMLDivElement>('sidebar-backdrop');
 const currentProjectElement = byId<HTMLSpanElement>('current-project');
 const currentChatTitleElement = byId<HTMLHeadingElement>('current-chat-title');
+const logoutButton = byId<HTMLButtonElement>('logout-button');
 
 const brainToggle = byId<HTMLButtonElement>('brain-toggle');
 const brainDrawer = byId<HTMLElement>('brain-drawer');
@@ -863,6 +865,7 @@ async function openBrainPage(slug: string): Promise<void> {
 ———————————————————————————————————————————————— */
 
 function bindEvents(): void {
+  logoutButton.addEventListener('click', () => void logout());
   chatInput.addEventListener('input', resizeComposer);
   chatInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -1006,10 +1009,12 @@ function bindEvents(): void {
    Boot
 ———————————————————————————————————————————————— */
 
-function init(): void {
+async function init(): Promise<void> {
+  const session = await requireAuth();
+  if (!session) return;
   resizeComposer();
   bindEvents();
   void loadApp();
 }
 
-init();
+void init();

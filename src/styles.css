@@ -2834,6 +2834,14 @@ input[type='range']:focus-visible {
   color: var(--acid);
 }
 
+.minimal-link-button {
+  border: 0;
+  border-bottom: 1px dotted var(--line-strong);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
 .minimal-main {
   padding-top: 30px;
 }

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0c09" />
+    <meta name="description" content="Private access to Diaries of a Soldier." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/login.css" />
+    <title>Sign in — Diaries of a Soldier</title>
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="login-brand">
+          <span class="login-mark" aria-hidden="true">
+            <svg width="38" height="38" viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="19.5" stroke="currentColor" stroke-width="1.2" opacity="0.55" />
+              <circle
+                cx="24"
+                cy="24"
+                r="13"
+                stroke="currentColor"
+                stroke-width="1"
+                opacity="0.3"
+                stroke-dasharray="2 3"
+              />
+              <path
+                d="M24 7.5 27.3 20.7 40.5 24 27.3 27.3 24 40.5 20.7 27.3 7.5 24 20.7 20.7Z"
+                fill="currentColor"
+              />
+              <circle cx="24" cy="24" r="2.2" fill="#0a0c09" />
+            </svg>
+          </span>
+          <div>
+            <span class="login-kicker">Diaries of a Soldier</span>
+            <h1 id="login-title">Private access</h1>
+          </div>
+        </div>
+
+        <p class="login-copy">
+          Sign in with the operator account to open the assistant and delivery console.
+        </p>
+
+        <form class="login-form" id="login-form" novalidate>
+          <label class="login-field">
+            <span>Email</span>
+            <input
+              id="login-email"
+              name="email"
+              type="email"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="you@example.com"
+              required
+              autofocus
+            />
+          </label>
+
+          <label class="login-field">
+            <span>Password</span>
+            <input
+              id="login-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Password"
+              required
+            />
+          </label>
+
+          <p class="login-error" id="login-error" role="alert" aria-live="polite" hidden></p>
+
+          <button class="login-submit" id="login-submit" type="submit">Sign in</button>
+        </form>
+
+        <div class="login-footer">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Session remains active for 7 days on this browser.</span>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/login.ts"></script>
+  </body>
+</html>

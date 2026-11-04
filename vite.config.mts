@@ -18,6 +18,7 @@ export default defineConfig({
       input: {
         assistant: 'index.html',
         dashboard: 'dashboard.html',
+        login: 'login.html',
       },
     },
   },

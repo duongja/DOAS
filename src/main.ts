@@ -1,4 +1,5 @@
 import { api, ApiError } from './client/api';
+import { logout, requireAuth } from './client/auth';
 import type {
   CreateDeliverableRequest,
   CreateGoalRequest,
@@ -45,6 +46,7 @@ const todayCount = byId<HTMLElement>('today-count');
 const weekCount = byId<HTMLElement>('week-count');
 const monthCount = byId<HTMLElement>('month-count');
 const planContent = byId<HTMLDivElement>('plan-content');
+const logoutButton = byId<HTMLButtonElement>('logout-button');
 
 const deliverableModal = byId<HTMLDivElement>('deliverable-modal');
 const deliverableClose = byId<HTMLButtonElement>('deliverable-close');
@@ -579,6 +581,7 @@ async function handleGoalSubmit(event: SubmitEvent): Promise<void> {
 ———————————————————————————————————————————————— */
 
 function bindEvents(): void {
+  logoutButton.addEventListener('click', () => void logout());
   newGoalTop.addEventListener('click', openGoalModal);
   newDeliverableButton.addEventListener('click', () => openDeliverableModal());
   emptyCreateButton.addEventListener('click', openGoalModal);
@@ -639,9 +642,11 @@ function bindEvents(): void {
   });
 }
 
-function init(): void {
+async function init(): Promise<void> {
+  const session = await requireAuth();
+  if (!session) return;
   bindEvents();
   void loadApp();
 }
 
-init();
+void init();
