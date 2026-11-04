@@ -34,6 +34,7 @@ The UI is pure HTML + CSS + client-side TypeScript — no React, no localStorage
 | Second brain | MongoDB markdown wiki + raw sources + conversation log |
 | Validation | Explicit request validators + Mongoose schema validation |
 | Client | Vanilla HTML, CSS, TypeScript, native `fetch()` |
+| PWA | Web app manifest + custom service worker + offline shell |
 | Dev runner | `ts-node-dev` + Vite (proxy `/api` → Express) |
 | Production | Compiled Express server serves `dist/client` |
 | Vercel | Single Express Function (`api/index.js`) + static Vite output |
@@ -117,6 +118,22 @@ Set a long random `SESSION_SECRET` in `.env` and in Vercel. Changing it invalida
 
 ---
 
+## PWA
+
+The app is installable as a standalone PWA:
+
+- `/manifest.webmanifest` — app identity, theme, shortcuts, and 192/512/maskable icons.
+- `/sw.js` — service worker that caches the app shell and static assets.
+- `/offline.html` — offline fallback page.
+- API responses are never cached; live data always requires a connection.
+- The service worker registers only in production builds.
+- Install from Chrome/Edge via the install icon, or Safari via **Share → Add to Home Screen**.
+- The app remains usable as an offline shell; login and database actions need connectivity.
+
+Vercel serves the manifest with `application/manifest+json` and disables long-lived caching for `sw.js` so updates roll out promptly.
+
+---
+
 ## Deploying to Vercel (Hobby)
 
 ### Live deployment
@@ -178,13 +195,15 @@ Or connect the GitHub repository in the Vercel dashboard and redeploy from `main
 
 - Function duration: **300 seconds** maximum (configured in both `vercel.json` and the function).
 - Function memory: **1 GB** (configured in `vercel.json`).
-- One API function handles all `/api/*` routes; the three HTML pages and assets are static CDN files.
+- One API function handles all `/api/*` routes; the app pages, offline fallback, manifest, service worker, and assets are static CDN files.
 - The assistant can take several seconds because it may call the model multiple times; the 300-second allowance covers normal tool loops.
 
 ### Verify after deploy
 
 - `GET https://doas-nu.vercel.app/api/health` → `{ status: "ok", database: "connected" }`
 - Open `https://doas-nu.vercel.app/` for the assistant and `https://doas-nu.vercel.app/dashboard.html` for the sprint planner.
+- `GET /manifest.webmanifest`, `/sw.js`, and `/offline.html` → `200`.
+- The browser install icon should be available after the first load; the app opens standalone after installation.
 
 ---
 
@@ -221,6 +240,7 @@ src/
   client/
     api.ts                  typed fetch wrapper for mission + assistant APIs
     auth.ts                 browser session guard, redirect, and logout
+    pwa.ts                  production-only service worker registration
   auth.ts                   server session signing, login, and route guard
   lib/
     date.ts                 local/UTC date + timestamp formatting
@@ -234,6 +254,11 @@ src/
 index.html                  minimal assistant shell
 dashboard.html              mission console shell
 login.html                  operator sign-in shell
+public/
+  manifest.webmanifest      PWA manifest
+  sw.js                     static/offline service worker
+  offline.html              offline fallback
+  icons/                    192, 512, maskable, and Apple touch icons
 src/assistant.css           minimal chat + memory drawer UI
 src/styles.css              tactical dashboard UI
 src/login.css               sign-in UI
