@@ -3,6 +3,7 @@ dist
 dist-ssr
 coverage
 *.local
+.vercel
 .env
 .env.*
 !.env.example
