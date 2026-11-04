@@ -73,11 +73,49 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://1
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+let databaseReady: Promise<void> | null = null;
+
+mongoose.connection.on('error', (error: unknown) => {
+  console.error('[db] MongoDB error:', error);
+});
+
+/**
+ * Connect once per process and reuse the connection across local requests and
+ * Vercel Fluid invocations. The legacy migration runs only after a fresh
+ * connection.
+ */
+export async function ensureDatabase(): Promise<void> {
+  if (mongoose.connection.readyState === 1) return;
+
+  if (!databaseReady) {
+    mongoose.set('strictQuery', true);
+    databaseReady = mongoose
+      .connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 10_000,
+        maxPoolSize: 10,
+      })
+      .then(async () => {
+        console.info(`[db] Connected to MongoDB: ${mongoose.connection.name}`);
+        await ensureDefaultProjectAndMigrate();
+      })
+      .catch((error: unknown) => {
+        databaseReady = null;
+        throw error;
+      });
+  }
+
+  await databaseReady;
+
+  if (Number(mongoose.connection.readyState) !== 1) {
+    databaseReady = null;
+    throw new Error('MongoDB connection is not ready.');
+  }
+}
+
 const app = express();
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-
 app.use(
   cors((request, callback) => {
     const origin = request.header('origin');
@@ -539,7 +577,7 @@ app.use('/api', (_request, response) => {
 ———————————————————————————————————————————————— */
 
 const clientDist = path.resolve(process.cwd(), 'dist/client');
-if (existsSync(path.join(clientDist, 'index.html'))) {
+if (!process.env.VERCEL && existsSync(path.join(clientDist, 'index.html'))) {
   app.use(express.static(clientDist));
   app.get(/.*/, (_request, response) => {
     response.sendFile(path.join(clientDist, 'index.html'));
@@ -613,19 +651,7 @@ app.use((error: unknown, _request: Request, response: Response, next: NextFuncti
 ———————————————————————————————————————————————— */
 
 export async function startServer(): Promise<void> {
-  mongoose.set('strictQuery', true);
-  mongoose.connection.on('error', (error: unknown) => {
-    console.error('[db] MongoDB error:', error);
-  });
-
-  await mongoose.connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 10_000,
-    maxPoolSize: 10,
-  });
-
-  console.info(`[db] Connected to MongoDB: ${mongoose.connection.name}`);
-
-  await ensureDefaultProjectAndMigrate();
+  await ensureDatabase();
 
   const server = app.listen(PORT, HOST, () => {
     console.info(`[api] Listening on http://${HOST}:${PORT} (${NODE_ENV})`);
@@ -654,7 +680,7 @@ export async function startServer(): Promise<void> {
   process.once('SIGTERM', () => shutdown('SIGTERM'));
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   startServer().catch((error: unknown) => {
     console.error('[api] Fatal startup error:', error);
     process.exit(1);
