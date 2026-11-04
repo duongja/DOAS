@@ -1,8 +1,14 @@
 import { Types } from 'mongoose';
 import { DeliverableModel, toDeliverableDTO } from '../models/deliverable';
+import {
+  DeliverableArchiveModel,
+  toDeliverableArchiveDTO,
+} from '../models/plan-archive';
 import { GoalModel } from '../models/schemas';
 import type {
   CreateDeliverableRequest,
+  DeliverableArchiveDTO,
+  DeliverableArchiveReason,
   DeliverableDTO,
   UpdateDeliverableRequest,
 } from '../shared/types';
@@ -29,6 +35,59 @@ export function isValidPlannedDate(value: string): boolean {
     date.getMonth() === month - 1 &&
     date.getDate() === day
   );
+}
+
+/**
+ * Preserve the day's plan before a deliverable leaves it. The first snapshot
+ * for a date is kept; later edits do not overwrite the day's original plan.
+ */
+async function captureDaySnapshot(
+  date: string,
+  reason: DeliverableArchiveReason,
+): Promise<void> {
+  const existing = await DeliverableArchiveModel.exists({ date }).exec();
+  if (existing) return;
+
+  const deliverables = await DeliverableModel.find({ plannedDate: date })
+    .sort({ createdAt: 1 })
+    .exec();
+  if (deliverables.length === 0) return;
+
+  try {
+    await DeliverableArchiveModel.updateOne(
+      { date },
+      {
+        $setOnInsert: {
+          date,
+          items: deliverables.map((deliverable) => ({
+            deliverableId: deliverable._id.toString(),
+            goalTitle: deliverable.goalTitle,
+            title: deliverable.title,
+            details: deliverable.details,
+            status: deliverable.status,
+          })),
+          capturedAt: new Date(),
+          reason,
+        },
+      },
+      { upsert: true },
+    ).exec();
+  } catch (error) {
+    // A concurrent update may have created the same day snapshot first.
+    const duplicate =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 11000;
+    if (!duplicate) throw error;
+  }
+}
+
+export async function listDeliverableArchives(): Promise<DeliverableArchiveDTO[]> {
+  const archives = await DeliverableArchiveModel.find()
+    .sort({ date: -1 })
+    .exec();
+  return archives.map(toDeliverableArchiveDTO);
 }
 
 function cleanTitle(value: string): string {
@@ -131,6 +190,7 @@ export async function updateDeliverable(
   if (patch.plannedDate !== undefined) {
     const nextDate = cleanDate(patch.plannedDate);
     if (nextDate !== deliverable.plannedDate) {
+      await captureDaySnapshot(deliverable.plannedDate, 'reschedule');
       const history = deliverable.plannedDateHistory ?? [];
       history.push({
         date: deliverable.plannedDate,
@@ -165,6 +225,13 @@ export async function deleteDeliverable(deliverableId: string): Promise<void> {
   if (!Types.ObjectId.isValid(deliverableId)) {
     throw new DeliverableServiceError('Invalid deliverable ID.');
   }
+
+  const deliverable = await DeliverableModel.findById(deliverableId).exec();
+  if (!deliverable) {
+    throw new DeliverableServiceError('Deliverable not found.', 404);
+  }
+
+  await captureDaySnapshot(deliverable.plannedDate, 'delete');
   const result = await DeliverableModel.deleteOne({ _id: deliverableId }).exec();
   if (result.deletedCount === 0) {
     throw new DeliverableServiceError('Deliverable not found.', 404);

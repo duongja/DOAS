@@ -4,6 +4,7 @@ import { registerPwa } from './client/pwa';
 import type {
   CreateDeliverableRequest,
   CreateGoalRequest,
+  DeliverableArchiveDTO,
   DeliverableDTO,
   GoalDTO,
 } from './shared/types';
@@ -82,6 +83,7 @@ const toastMessage = byId<HTMLSpanElement>('toast-message');
 interface UiState {
   goals: GoalDTO[];
   deliverables: DeliverableDTO[];
+  archives: DeliverableArchiveDTO[];
   period: PlanView;
   loaded: boolean;
 }
@@ -89,6 +91,7 @@ interface UiState {
 const state: UiState = {
   goals: [],
   deliverables: [],
+  archives: [],
   period: 'today',
   loaded: false,
 };
@@ -163,12 +166,14 @@ function hideAppError(): void {
 interface PlanRow {
   item: DeliverableDTO;
   movedTo?: string;
+  archived?: boolean;
 }
 
 interface HistoryEntry {
   date: string;
   item: DeliverableDTO;
   movedTo?: string;
+  archived?: boolean;
 }
 
 function sortRows(rows: PlanRow[]): PlanRow[] {
@@ -188,14 +193,53 @@ function itemsInPeriod(period: PlanPeriod, now = new Date()): DeliverableDTO[] {
 function getHistoryEntries(now: Date): HistoryEntry[] {
   const today = toLocalDateString(now);
   const entries: HistoryEntry[] = [];
+  const archivedDates = new Set<string>();
+
+  for (const archive of state.archives) {
+    if (archive.date > today) continue;
+    archivedDates.add(archive.date);
+
+    archive.items.forEach((item, index) => {
+      const current = item.deliverableId
+        ? state.deliverables.find((candidate) => candidate.id === item.deliverableId)
+        : undefined;
+      const movedTo =
+        current && current.plannedDate !== archive.date
+          ? current.plannedDate
+          : undefined;
+
+      entries.push({
+        date: archive.date,
+        archived: true,
+        movedTo,
+        item: {
+          id: `${archive.date}-${index}`,
+          goalId: '',
+          goalTitle: item.goalTitle,
+          title: item.title,
+          details: item.details,
+          plannedDate: archive.date,
+          plannedDateHistory: [],
+          status: item.status,
+          deliveredAt: null,
+          createdAt: archive.capturedAt,
+          updatedAt: archive.capturedAt,
+        },
+      });
+    });
+  }
 
   for (const item of state.deliverables) {
-    if (item.plannedDate < today) {
+    if (item.plannedDate < today && !archivedDates.has(item.plannedDate)) {
       entries.push({ date: item.plannedDate, item });
     }
 
     for (const move of item.plannedDateHistory ?? []) {
-      if (move.date <= today && move.date !== item.plannedDate) {
+      if (
+        move.date <= today &&
+        move.date !== item.plannedDate &&
+        !archivedDates.has(move.date)
+      ) {
         entries.push({
           date: move.date,
           item,
@@ -231,8 +275,13 @@ function renderTabs(now: Date): void {
   });
 }
 
-function deliverableRow(item: DeliverableDTO, movedTo?: string): string {
+function deliverableRow(
+  item: DeliverableDTO,
+  movedTo?: string,
+  archived = false,
+): string {
   const delivered = item.status === 'delivered';
+  const readOnly = Boolean(movedTo || archived);
   const meta = [
     movedTo ? `Moved to ${formatDateShort(movedTo)}` : '',
     item.goalTitle,
@@ -241,7 +290,7 @@ function deliverableRow(item: DeliverableDTO, movedTo?: string): string {
     .filter(Boolean)
     .join(' · ');
 
-  const check = movedTo
+  const check = readOnly
     ? `<span class="deliverable-check" aria-hidden="true">${delivered ? '✓' : ''}</span>`
     : `<button
         type="button"
@@ -251,7 +300,7 @@ function deliverableRow(item: DeliverableDTO, movedTo?: string): string {
         aria-label="${delivered ? 'Mark as planned' : 'Mark as delivered'}"
       >${delivered ? '✓' : ''}</button>`;
 
-  const action = movedTo
+  const action = readOnly
     ? '<span class="deliverable-archived">Archived</span>'
     : `<button
         type="button"
@@ -260,8 +309,10 @@ function deliverableRow(item: DeliverableDTO, movedTo?: string): string {
         aria-label="Delete deliverable"
       >×</button>`;
 
+  const stateClass = archived ? 'archived' : movedTo ? 'moved' : '';
+
   return `
-    <div class="deliverable-row ${delivered ? 'delivered' : ''} ${movedTo ? 'moved' : ''}">
+    <div class="deliverable-row ${delivered ? 'delivered' : ''} ${stateClass}">
       ${check}
       <span class="deliverable-main">
         <span class="deliverable-title">${escapeHtml(item.title)}</span>
@@ -283,7 +334,7 @@ function renderDay(
   const canAdd = allowAdd && iso >= todayIso;
   const rowsHtml = rows.length
     ? sortRows(rows)
-        .map((row) => deliverableRow(row.item, row.movedTo))
+        .map((row) => deliverableRow(row.item, row.movedTo, row.archived))
         .join('')
     : `<span class="plan-none">No deliverables</span>${
         canAdd
@@ -351,7 +402,11 @@ function renderPlan(now: Date): void {
           date,
           entries
             .filter((entry) => entry.date === date)
-            .map((entry) => ({ item: entry.item, movedTo: entry.movedTo })),
+            .map((entry) => ({
+              item: entry.item,
+              movedTo: entry.movedTo,
+              archived: entry.archived,
+            })),
           now,
           false,
         ),
@@ -446,19 +501,22 @@ function renderAll(): void {
 interface FetchedData {
   goals: GoalDTO[];
   deliverables: DeliverableDTO[];
+  archives: DeliverableArchiveDTO[];
 }
 
 async function fetchData(): Promise<FetchedData> {
-  const [goals, deliverables] = await Promise.all([
+  const [goals, deliverables, archives] = await Promise.all([
     api.getGoals(),
     api.getDeliverables(),
+    api.getDeliverableArchives(),
   ]);
-  return { goals, deliverables };
+  return { goals, deliverables, archives };
 }
 
 function applyData(data: FetchedData): void {
   state.goals = data.goals;
   state.deliverables = data.deliverables;
+  state.archives = data.archives;
   state.loaded = true;
 }
 

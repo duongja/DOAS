@@ -3877,12 +3877,14 @@ input[type='range']:focus-visible {
   opacity: 0.55;
 }
 
-.deliverable-row.moved {
+.deliverable-row.moved,
+.deliverable-row.archived {
   border-style: dashed;
   background: rgba(201, 255, 77, 0.025);
 }
 
-.deliverable-row.moved .deliverable-check {
+.deliverable-row.moved .deliverable-check,
+.deliverable-row.archived .deliverable-check {
   border-style: dashed;
   pointer-events: none;
 }

@@ -24,6 +24,7 @@ import {
   DeliverableServiceError,
   createDeliverable,
   deleteDeliverable,
+  listDeliverableArchives,
   listDeliverables,
   updateDeliverable,
 } from './services/deliverable-service';
@@ -58,6 +59,7 @@ import type {
   CreateDeliverableRequest,
   CreateGoalRequest,
   CreateLogRequest,
+  DeliverableArchiveDTO,
   DeliverableDTO,
   GoalDTO,
   LogDTO,
@@ -370,6 +372,14 @@ app.get(
     const to = typeof request.query.to === 'string' ? request.query.to : undefined;
     const goalId = typeof request.query.goalId === 'string' ? request.query.goalId : undefined;
     const payload: DeliverableDTO[] = await listDeliverables({ from, to, goalId });
+    response.json(payload);
+  }),
+);
+
+app.get(
+  '/api/deliverables/history',
+  asyncHandler(async (_request: Request, response: Response) => {
+    const payload: DeliverableArchiveDTO[] = await listDeliverableArchives();
     response.json(payload);
   }),
 );

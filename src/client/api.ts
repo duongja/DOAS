@@ -4,6 +4,7 @@ import type {
   CreateGoalRequest,
   CreateLogRequest,
   DashboardDTO,
+  DeliverableArchiveDTO,
   DeliverableDTO,
   GoalDTO,
   LogDTO,
@@ -109,6 +110,10 @@ export const api = {
     if (filter.goalId) params.set('goalId', filter.goalId);
     const query = params.toString();
     return request<DeliverableDTO[]>(`/api/deliverables${query ? `?${query}` : ''}`);
+  },
+
+  getDeliverableArchives(): Promise<DeliverableArchiveDTO[]> {
+    return request<DeliverableArchiveDTO[]>('/api/deliverables/history');
   },
 
   createDeliverable(body: CreateDeliverableRequest): Promise<DeliverableDTO> {

@@ -87,6 +87,24 @@ export interface DeliverableDateMoveDTO {
   movedAt: string;
 }
 
+export type DeliverableArchiveReason = 'reschedule' | 'delete';
+
+export interface DeliverableArchiveItemDTO {
+  deliverableId?: string;
+  goalTitle: string;
+  title: string;
+  details: string;
+  status: DeliverableStatus;
+}
+
+/** A day-level snapshot taken before a deliverable is moved or deleted. */
+export interface DeliverableArchiveDTO {
+  date: string;
+  items: DeliverableArchiveItemDTO[];
+  capturedAt: string;
+  reason: DeliverableArchiveReason;
+}
+
 /** A dated outcome that the user plans to deliver. */
 export interface DeliverableDTO {
   id: string;
