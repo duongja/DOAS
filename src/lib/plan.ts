@@ -1,6 +1,7 @@
 import { formatDateShort, parseLocalDate, toLocalDateString } from './date';
 
 export type PlanPeriod = 'today' | 'week' | 'month';
+export type PlanView = PlanPeriod | 'history';
 
 export interface PlanRange {
   start: string;

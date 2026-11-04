@@ -80,6 +80,13 @@ export interface CreateLogRequest {
 
 export type DeliverableStatus = 'planned' | 'delivered';
 
+/** A previous planned date retained when a deliverable is rescheduled. */
+export interface DeliverableDateMoveDTO {
+  date: string;
+  movedTo: string;
+  movedAt: string;
+}
+
 /** A dated outcome that the user plans to deliver. */
 export interface DeliverableDTO {
   id: string;
@@ -89,6 +96,8 @@ export interface DeliverableDTO {
   details: string;
   /** Local calendar date, YYYY-MM-DD. */
   plannedDate: string;
+  /** Dates this deliverable was moved away from, newest last. */
+  plannedDateHistory: DeliverableDateMoveDTO[];
   status: DeliverableStatus;
   deliveredAt: string | null;
   createdAt: string;

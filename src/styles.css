@@ -3716,7 +3716,7 @@ input[type='range']:focus-visible {
 
 .plan-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -3877,6 +3877,28 @@ input[type='range']:focus-visible {
   opacity: 0.55;
 }
 
+.deliverable-row.moved {
+  border-style: dashed;
+  background: rgba(201, 255, 77, 0.025);
+}
+
+.deliverable-row.moved .deliverable-check {
+  border-style: dashed;
+  pointer-events: none;
+}
+
+.deliverable-archived {
+  flex: none;
+  padding: 2px 5px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 6.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
 .deliverable-check {
   display: grid;
   flex: none;
@@ -3982,6 +4004,7 @@ input[type='range']:focus-visible {
 
 @media (max-width: 620px) {
   .plan-tabs {
+    grid-template-columns: repeat(2, 1fr);
     gap: 5px;
   }
 

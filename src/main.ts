@@ -7,7 +7,7 @@ import type {
   DeliverableDTO,
   GoalDTO,
 } from './shared/types';
-import { formatDate, toLocalDateString } from './lib/date';
+import { formatDate, formatDateShort, toLocalDateString } from './lib/date';
 import {
   formatLongDate,
   formatRangeLabel,
@@ -16,6 +16,7 @@ import {
   inPlanRange,
   isToday,
   type PlanPeriod,
+  type PlanView,
 } from './lib/plan';
 
 /* ————————————————————————————————————————————————
@@ -46,6 +47,7 @@ const periodTabs = byId<HTMLDivElement>('period-tabs');
 const todayCount = byId<HTMLElement>('today-count');
 const weekCount = byId<HTMLElement>('week-count');
 const monthCount = byId<HTMLElement>('month-count');
+const historyCount = byId<HTMLElement>('history-count');
 const planContent = byId<HTMLDivElement>('plan-content');
 const logoutButton = byId<HTMLButtonElement>('logout-button');
 
@@ -80,7 +82,7 @@ const toastMessage = byId<HTMLSpanElement>('toast-message');
 interface UiState {
   goals: GoalDTO[];
   deliverables: DeliverableDTO[];
-  period: PlanPeriod;
+  period: PlanView;
   loaded: boolean;
 }
 
@@ -91,10 +93,11 @@ const state: UiState = {
   loaded: false,
 };
 
-const countElements: Record<PlanPeriod, HTMLElement> = {
+const countElements: Record<PlanView, HTMLElement> = {
   today: todayCount,
   week: weekCount,
   month: monthCount,
+  history: historyCount,
 };
 
 let toastTimer: number | undefined;
@@ -157,16 +160,52 @@ function hideAppError(): void {
   appError.hidden = true;
 }
 
-function sortDeliverables(items: DeliverableDTO[]): DeliverableDTO[] {
-  return [...items].sort((left, right) => {
-    if (left.status !== right.status) return left.status === 'planned' ? -1 : 1;
-    return left.createdAt.localeCompare(right.createdAt);
+interface PlanRow {
+  item: DeliverableDTO;
+  movedTo?: string;
+}
+
+interface HistoryEntry {
+  date: string;
+  item: DeliverableDTO;
+  movedTo?: string;
+}
+
+function sortRows(rows: PlanRow[]): PlanRow[] {
+  return [...rows].sort((left, right) => {
+    if (left.item.status !== right.item.status) {
+      return left.item.status === 'planned' ? -1 : 1;
+    }
+    return left.item.createdAt.localeCompare(right.item.createdAt);
   });
 }
 
 function itemsInPeriod(period: PlanPeriod, now = new Date()): DeliverableDTO[] {
   const range = getPlanRange(period, now);
   return state.deliverables.filter((item) => inPlanRange(item.plannedDate, range));
+}
+
+function getHistoryEntries(now: Date): HistoryEntry[] {
+  const today = toLocalDateString(now);
+  const entries: HistoryEntry[] = [];
+
+  for (const item of state.deliverables) {
+    if (item.plannedDate < today) {
+      entries.push({ date: item.plannedDate, item });
+    }
+
+    for (const move of item.plannedDateHistory ?? []) {
+      if (move.date <= today && move.date !== item.plannedDate) {
+        entries.push({
+          date: move.date,
+          item,
+          movedTo: move.movedTo,
+        });
+      }
+    }
+  }
+
+  return entries;
 }
 
 /* ————————————————————————————————————————————————
@@ -182,6 +221,9 @@ function renderTabs(now: Date): void {
     countElements[period].textContent = `${delivered}/${items.length}`;
   }
 
+  const history = getHistoryEntries(now);
+  countElements.history.textContent = String(history.length);
+
   periodTabs.querySelectorAll<HTMLButtonElement>('[data-period]').forEach((tab) => {
     const active = tab.dataset.period === state.period;
     tab.classList.toggle('active', active);
@@ -189,41 +231,60 @@ function renderTabs(now: Date): void {
   });
 }
 
-function deliverableRow(item: DeliverableDTO): string {
+function deliverableRow(item: DeliverableDTO, movedTo?: string): string {
   const delivered = item.status === 'delivered';
-  const meta = item.details
-    ? `${item.goalTitle} · ${item.details}`
-    : item.goalTitle;
+  const meta = [
+    movedTo ? `Moved to ${formatDateShort(movedTo)}` : '',
+    item.goalTitle,
+    item.details,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  return `
-    <div class="deliverable-row ${delivered ? 'delivered' : ''}">
-      <button
+  const check = movedTo
+    ? `<span class="deliverable-check" aria-hidden="true">${delivered ? '✓' : ''}</span>`
+    : `<button
         type="button"
         class="deliverable-check"
         data-deliverable-toggle="${escapeHtml(item.id)}"
         aria-pressed="${delivered}"
         aria-label="${delivered ? 'Mark as planned' : 'Mark as delivered'}"
-      >${delivered ? '✓' : ''}</button>
-      <span class="deliverable-main">
-        <span class="deliverable-title">${escapeHtml(item.title)}</span>
-        <span class="deliverable-meta">${escapeHtml(meta)}</span>
-      </span>
-      <button
+      >${delivered ? '✓' : ''}</button>`;
+
+  const action = movedTo
+    ? '<span class="deliverable-archived">Archived</span>'
+    : `<button
         type="button"
         class="deliverable-delete"
         data-deliverable-delete="${escapeHtml(item.id)}"
         aria-label="Delete deliverable"
-      >×</button>
+      >×</button>`;
+
+  return `
+    <div class="deliverable-row ${delivered ? 'delivered' : ''} ${movedTo ? 'moved' : ''}">
+      ${check}
+      <span class="deliverable-main">
+        <span class="deliverable-title">${escapeHtml(item.title)}</span>
+        <span class="deliverable-meta">${escapeHtml(meta)}</span>
+      </span>
+      ${action}
     </div>`;
 }
 
-function renderDay(iso: string, items: DeliverableDTO[], now: Date): string {
+function renderDay(
+  iso: string,
+  rows: PlanRow[],
+  now: Date,
+  allowAdd = true,
+): string {
   const header = getDayHeader(iso);
   const today = isToday(iso, now);
   const todayIso = toLocalDateString(now);
-  const canAdd = iso >= todayIso;
-  const rows = items.length
-    ? sortDeliverables(items).map(deliverableRow).join('')
+  const canAdd = allowAdd && iso >= todayIso;
+  const rowsHtml = rows.length
+    ? sortRows(rows)
+        .map((row) => deliverableRow(row.item, row.movedTo))
+        .join('')
     : `<span class="plan-none">No deliverables</span>${
         canAdd
           ? `<button type="button" class="plan-add-inline" data-add-deliverable data-date="${iso}">+ Add</button>`
@@ -238,7 +299,7 @@ function renderDay(iso: string, items: DeliverableDTO[], now: Date): string {
         <span class="plan-month">${header.month}</span>
         ${today ? '<em>Today</em>' : ''}
       </div>
-      <div class="plan-day-body">${rows}</div>
+      <div class="plan-day-body">${rowsHtml}</div>
     </div>`;
 }
 
@@ -256,17 +317,63 @@ function emptyPlan(label: string, now: Date): string {
     </div>`;
 }
 
+function emptyHistory(): string {
+  return `
+    <div class="plan-empty">
+      <span class="eyebrow">No history yet</span>
+      <p>Finished days and rescheduled deliverables stay here.</p>
+    </div>`;
+}
+
 function renderPlan(now: Date): void {
-  const range = getPlanRange(state.period, now);
+  todayLabel.textContent = formatLongDate(now);
+  const period = state.period;
+
+  if (period === 'history') {
+    const entries = getHistoryEntries(now);
+    const dates = [...new Set(entries.map((entry) => entry.date))].sort().reverse();
+    const delivered = entries.filter((entry) => entry.item.status === 'delivered').length;
+
+    planTitle.textContent = 'History';
+    planSubtitle.textContent = entries.length
+      ? `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} across ${dates.length} ${dates.length === 1 ? 'day' : 'days'} · ${delivered} delivered`
+      : 'Every past day and rescheduled trail stays here';
+    document.title = 'History — Diaries of a Soldier';
+
+    if (entries.length === 0) {
+      planContent.innerHTML = emptyHistory();
+      return;
+    }
+
+    planContent.innerHTML = dates
+      .map((date) =>
+        renderDay(
+          date,
+          entries
+            .filter((entry) => entry.date === date)
+            .map((entry) => ({ item: entry.item, movedTo: entry.movedTo })),
+          now,
+          false,
+        ),
+      )
+      .join('');
+    return;
+  }
+
+  const range = getPlanRange(period, now);
   const items = state.deliverables.filter((item) => inPlanRange(item.plannedDate, range));
   const delivered = items.filter((item) => item.status === 'delivered').length;
 
-  todayLabel.textContent = formatLongDate(now);
-
-  if (state.period === 'today') {
+  if (period === 'today') {
+    const todayIso = toLocalDateString(now);
+    const overdue = state.deliverables.filter(
+      (item) => item.plannedDate < todayIso && item.status === 'planned',
+    ).length;
     planTitle.textContent = 'Today’s plan';
-    planSubtitle.textContent = `${delivered} of ${items.length} delivered`;
-  } else if (state.period === 'week') {
+    planSubtitle.textContent = `${delivered} of ${items.length} delivered${
+      overdue ? ` · ${overdue} overdue in History` : ''
+    }`;
+  } else if (period === 'week') {
     planTitle.textContent = 'This week';
     planSubtitle.textContent = `${formatRangeLabel('week', range)} · ${delivered} of ${items.length} delivered`;
   } else {
@@ -277,23 +384,22 @@ function renderPlan(now: Date): void {
   document.title = `${planTitle.textContent} — Diaries of a Soldier`;
 
   if (items.length === 0) {
-    const label =
-      state.period === 'today' ? 'today' : state.period === 'week' ? 'this week' : 'this month';
+    const label = period === 'today' ? 'today' : period === 'week' ? 'this week' : 'this month';
     planContent.innerHTML = emptyPlan(label, now);
     return;
   }
 
-  if (state.period === 'today') {
-    planContent.innerHTML = renderDay(range.start, items, now);
+  if (period === 'today') {
+    planContent.innerHTML = renderDay(range.start, items.map((item) => ({ item })), now);
     return;
   }
 
-  if (state.period === 'week') {
+  if (period === 'week') {
     planContent.innerHTML = range.days
       .map((day) =>
         renderDay(
           day,
-          items.filter((item) => item.plannedDate === day),
+          items.filter((item) => item.plannedDate === day).map((item) => ({ item })),
           now,
         ),
       )
@@ -306,7 +412,7 @@ function renderPlan(now: Date): void {
     .map((date) =>
       renderDay(
         date,
-        items.filter((item) => item.plannedDate === date),
+        items.filter((item) => item.plannedDate === date).map((item) => ({ item })),
         now,
       ),
     )
@@ -606,7 +712,12 @@ function bindEvents(): void {
     if (!(event.target instanceof Element)) return;
     const tab = event.target.closest<HTMLButtonElement>('[data-period]');
     const period = tab?.dataset.period;
-    if (period === 'today' || period === 'week' || period === 'month') {
+    if (
+      period === 'today' ||
+      period === 'week' ||
+      period === 'month' ||
+      period === 'history'
+    ) {
       state.period = period;
       renderAll();
     }

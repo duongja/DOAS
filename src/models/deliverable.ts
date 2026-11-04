@@ -1,6 +1,14 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 import type { DeliverableDTO, DeliverableStatus } from '../shared/types';
 
+export interface DeliverableDateMoveRecord {
+  /** The date the deliverable was previously planned for. */
+  date: string;
+  /** The date it was moved to at that time. */
+  movedTo: string;
+  movedAt: Date;
+}
+
 export interface DeliverableRecord {
   goalId: Types.ObjectId;
   /** Snapshot so the plan stays readable if a goal is archived. */
@@ -9,6 +17,8 @@ export interface DeliverableRecord {
   details: string;
   /** Local calendar date, YYYY-MM-DD. */
   plannedDate: string;
+  /** Immutable trail of dates this deliverable has been moved away from. */
+  plannedDateHistory: DeliverableDateMoveRecord[];
   status: DeliverableStatus;
   deliveredAt: Date | null;
   createdAt: Date;
@@ -16,6 +26,23 @@ export interface DeliverableRecord {
 }
 
 export type DeliverableDocument = HydratedDocument<DeliverableRecord>;
+
+const DeliverableDateMoveSchema = new Schema<DeliverableDateMoveRecord>(
+  {
+    date: {
+      type: String,
+      required: true,
+      match: /^\d{4}-\d{2}-\d{2}$/,
+    },
+    movedTo: {
+      type: String,
+      required: true,
+      match: /^\d{4}-\d{2}-\d{2}$/,
+    },
+    movedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
 
 export const DeliverableSchema = new Schema<DeliverableRecord>(
   {
@@ -33,6 +60,10 @@ export const DeliverableSchema = new Schema<DeliverableRecord>(
       required: true,
       match: /^\d{4}-\d{2}-\d{2}$/,
       index: true,
+    },
+    plannedDateHistory: {
+      type: [DeliverableDateMoveSchema],
+      default: [],
     },
     status: {
       type: String,
@@ -65,6 +96,11 @@ export function toDeliverableDTO(deliverable: DeliverableDocument): DeliverableD
     title: deliverable.title,
     details: deliverable.details,
     plannedDate: deliverable.plannedDate,
+    plannedDateHistory: (deliverable.plannedDateHistory ?? []).map((move) => ({
+      date: move.date,
+      movedTo: move.movedTo,
+      movedAt: move.movedAt.toISOString(),
+    })),
     status: deliverable.status,
     deliveredAt: deliverable.deliveredAt?.toISOString() ?? null,
     createdAt: deliverable.createdAt.toISOString(),

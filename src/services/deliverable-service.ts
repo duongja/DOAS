@@ -129,8 +129,18 @@ export async function updateDeliverable(
     changed = true;
   }
   if (patch.plannedDate !== undefined) {
-    deliverable.plannedDate = cleanDate(patch.plannedDate);
-    changed = true;
+    const nextDate = cleanDate(patch.plannedDate);
+    if (nextDate !== deliverable.plannedDate) {
+      const history = deliverable.plannedDateHistory ?? [];
+      history.push({
+        date: deliverable.plannedDate,
+        movedTo: nextDate,
+        movedAt: new Date(),
+      });
+      deliverable.plannedDateHistory = history;
+      deliverable.plannedDate = nextDate;
+      changed = true;
+    }
   }
   if (patch.status !== undefined) {
     if (patch.status !== 'planned' && patch.status !== 'delivered') {
