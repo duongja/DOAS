@@ -142,9 +142,11 @@ The dashboard has four views:
 - **This week** / **This month** — the active sprint windows.
 - **History** — every past day with its deliverables, newest first.
 
-Rescheduling is additive. When a deliverable's `plannedDate` changes, the server appends `{ date, movedTo, movedAt }` to `plannedDateHistory`; the original day stays in **History** marked **Moved to …** instead of disappearing. Today's/current entries remain editable; archived moved entries are read-only.
+History is backed by day-level snapshots. Before a deliverable is rescheduled or deleted, the server captures the affected day's full plan — original titles, details, status, and deliverable IDs. The day remains visible with its original content even if the live deliverable was rewritten, moved, or deleted.
 
-Deleting a deliverable still removes it permanently; use **History** to review past days before deleting.
+Each deliverable also keeps a compact date trail in `plannedDateHistory` (`date`, `movedTo`, `movedAt`). Current entries remain editable; archived day entries are read-only. Rescheduling is additive, so changing a date no longer erases the previous day.
+
+Deleting a deliverable removes the live record, but the day snapshot remains in **History**.
 
 ---
 
@@ -241,7 +243,8 @@ src/
     tools.ts               tool definitions + validated execution
   models/
     schemas.ts              Mongoose Goal + Log schemas, DTO serializers
-    deliverable.ts          dated deliverables / sprint plan items
+    deliverable.ts          dated deliverables / sprint plan items + date trail
+    plan-archive.ts         immutable day snapshots for history
     knowledge.ts            projects, conversations, messages, wiki pages, sources
   services/
     mission-service.ts      goal/log/dashboard operations (used by routes + tools)
@@ -296,6 +299,7 @@ vercel.json                 Vercel build, function, and rewrite config
 | `GET` | `/api/logs` | List campaign logs, reverse-chronological |
 | `GET` | `/api/dashboard` | Cumulative impact, alerts, and daily summaries |
 | `GET` | `/api/deliverables` | List planned/delivered outcomes (`?from=&to=&goalId=`) |
+| `GET` | `/api/deliverables/history` | List day-level plan snapshots |
 | `POST` | `/api/deliverables` | Add a dated deliverable to the plan |
 | `PATCH` | `/api/deliverables/:id` | Rename, reschedule, edit, or complete a deliverable |
 | `DELETE` | `/api/deliverables/:id` | Remove a deliverable |
