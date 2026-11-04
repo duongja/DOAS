@@ -1,4 +1,5 @@
 import { getAuthStatus, safeNextPath } from './client/auth';
+import { registerPwa } from './client/pwa';
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -87,3 +88,4 @@ form.addEventListener('submit', (event) => {
 });
 
 void redirectIfAuthenticated();
+registerPwa();

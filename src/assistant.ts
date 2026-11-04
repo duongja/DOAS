@@ -1,5 +1,6 @@
 import { ApiError, api } from './client/api';
 import { logout, requireAuth } from './client/auth';
+import { registerPwa } from './client/pwa';
 import type {
   AssistantStatusDTO,
   ChatMessageDTO,
@@ -1010,6 +1011,7 @@ function bindEvents(): void {
 ———————————————————————————————————————————————— */
 
 async function init(): Promise<void> {
+  registerPwa();
   const session = await requireAuth();
   if (!session) return;
   resizeComposer();

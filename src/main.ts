@@ -1,5 +1,6 @@
 import { api, ApiError } from './client/api';
 import { logout, requireAuth } from './client/auth';
+import { registerPwa } from './client/pwa';
 import type {
   CreateDeliverableRequest,
   CreateGoalRequest,
@@ -643,6 +644,7 @@ function bindEvents(): void {
 }
 
 async function init(): Promise<void> {
+  registerPwa();
   const session = await requireAuth();
   if (!session) return;
   bindEvents();
