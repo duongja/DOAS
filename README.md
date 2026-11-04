@@ -124,7 +124,7 @@ Set a long random `SESSION_SECRET` in `.env` and in Vercel. Changing it invalida
 - **Production:** https://doas-nu.vercel.app
 - **Vercel project:** `nashons-projects/doas`
 - **Framework preset:** Vite
-- **Deployment protection:** Vercel Authentication is enabled; sign in with the Vercel account that owns the project.
+- **Deployment protection:** Vercel SSO is disabled; the app's `/login.html` operator session is the access gate.
 
 The repository includes a Vercel configuration for a single Express function plus static Vite pages:
 
@@ -137,6 +137,8 @@ The repository includes a Vercel configuration for a single Express function plu
 Import `https://github.com/duongja/DOAS` in Vercel. The included `vercel.json` supplies the build and output settings.
 
 Choose **Vite** as the Framework Preset, not Express. This repo is a static Vite frontend plus an explicit serverless API function; the Vite preset preserves the static pages while Vercel builds `api/index.js` separately.
+
+If the app's operator login should be the only gate, disable Vercel Authentication under **Project → Settings → Deployment Protection**. Otherwise Vercel SSO runs before `/login.html`.
 
 ### 2. Add environment variables
 
