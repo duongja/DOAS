@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c0e0a" />
+    <meta
+      name="description"
+      content="Diaries of a Soldier — a delivery-first sprint planner for today, this week, and this month."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Today — Diaries of a Soldier</title>
+    <script type="module" src="/src/main.ts"></script>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="minimal-shell">
+      <header class="minimal-top">
+        <a class="minimal-brand" href="/">
+          <span class="minimal-mark" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="19.5" stroke="currentColor" stroke-width="1.2" opacity="0.55" />
+              <path d="M24 7.5 27.3 20.7 40.5 24 27.3 27.3 24 40.5 20.7 27.3 7.5 24 20.7 20.7Z" fill="currentColor" />
+              <circle cx="24" cy="24" r="2.2" fill="#0a0c09" />
+            </svg>
+          </span>
+          Diaries of a Soldier
+        </a>
+
+        <div class="minimal-top-right">
+          <span class="minimal-connection">
+            <span class="status-dot" id="online-dot" aria-hidden="true"></span>
+            <span id="console-status">Connecting…</span>
+          </span>
+          <a class="minimal-link" href="/">Assistant</a>
+        </div>
+      </header>
+
+      <main class="minimal-main">
+        <div id="app-error" class="app-error" role="alert" hidden>
+          <div>
+            <strong>Couldn’t load the plan</strong>
+            <p id="app-error-message"></p>
+          </div>
+          <button type="button" class="secondary-button" id="retry-button">Retry</button>
+        </div>
+
+        <div id="loading-state" class="minimal-status">Loading the plan…</div>
+
+        <div id="empty-state" class="minimal-empty" hidden>
+          <span class="eyebrow">No objective yet</span>
+          <h1>Create your first objective.</h1>
+          <p>Deliverables live under an objective. Create one, then plan today, this week, or this month.</p>
+          <button type="button" class="submit-button compact" id="empty-create-button">
+            New objective
+          </button>
+        </div>
+
+        <div id="plan-view" hidden>
+          <header class="plan-header">
+            <div>
+              <span class="eyebrow" id="today-label"></span>
+              <h1 id="plan-title">Today’s plan</h1>
+              <p class="minimal-facts" id="plan-subtitle"></p>
+            </div>
+            <div class="plan-actions">
+              <button type="button" class="secondary-button" id="new-goal-top">+ Objective</button>
+              <button type="button" class="submit-button compact" id="new-deliverable-button">
+                + Deliverable
+              </button>
+            </div>
+          </header>
+
+          <div class="plan-tabs" id="period-tabs" role="tablist" aria-label="Plan period">
+            <button type="button" class="plan-tab active" data-period="today" role="tab" aria-selected="true">
+              <span>Today</span>
+              <strong id="today-count">0/0</strong>
+              <small>delivered</small>
+            </button>
+            <button type="button" class="plan-tab" data-period="week" role="tab" aria-selected="false">
+              <span>This week</span>
+              <strong id="week-count">0/0</strong>
+              <small>delivered</small>
+            </button>
+            <button type="button" class="plan-tab" data-period="month" role="tab" aria-selected="false">
+              <span>This month</span>
+              <strong id="month-count">0/0</strong>
+              <small>delivered</small>
+            </button>
+          </div>
+
+          <section class="panel plan-panel">
+            <div id="plan-content"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="deliverable-modal" hidden>
+      <div class="modal compact-modal" role="dialog" aria-modal="true" aria-labelledby="deliverable-modal-title">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">Sprint timeline</span>
+            <h2 id="deliverable-modal-title">Add deliverable</h2>
+          </div>
+          <button type="button" class="modal-close" id="deliverable-close" aria-label="Close">×</button>
+        </div>
+
+        <form id="deliverable-form" novalidate>
+          <div class="modal-body">
+            <label class="field">
+              <span>Objective</span>
+              <select id="deliverable-goal"></select>
+            </label>
+
+            <label class="field">
+              <span>What will you deliver?</span>
+              <input
+                id="deliverable-title"
+                type="text"
+                maxlength="160"
+                placeholder="A concrete outcome, not a time block"
+              />
+            </label>
+
+            <div class="field-row">
+              <label class="field">
+                <span>Date</span>
+                <input id="deliverable-date" type="date" />
+              </label>
+              <label class="field">
+                <span>Details <em>optional</em></span>
+                <input
+                  id="deliverable-details"
+                  type="text"
+                  maxlength="1000"
+                  placeholder="Definition of done"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <p class="form-error" id="deliverable-error" role="alert" hidden></p>
+            <div class="modal-footer-actions">
+              <button type="button" class="secondary-button" id="deliverable-cancel">Cancel</button>
+              <button type="submit" class="submit-button compact" id="deliverable-submit">
+                Add deliverable
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="goal-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="goal-modal-title">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">New objective</span>
+            <h2 id="goal-modal-title">Create objective</h2>
+          </div>
+          <button type="button" class="modal-close" id="goal-modal-close" aria-label="Close">×</button>
+        </div>
+
+        <form id="goal-form" novalidate>
+          <div class="modal-body">
+            <section class="editor-section">
+              <div class="section-heading">
+                <div>
+                  <h3>Objective</h3>
+                  <p>Title and one metric that can move.</p>
+                </div>
+              </div>
+
+              <label class="field">
+                <span>Title</span>
+                <input id="goal-title" type="text" maxlength="120" placeholder="e.g. Ship the Field Manual" />
+              </label>
+
+              <label class="field">
+                <span>Metric</span>
+                <input
+                  id="goal-movable"
+                  type="text"
+                  maxlength="200"
+                  placeholder="e.g. Manuscript words drafted"
+                />
+              </label>
+            </section>
+
+            <section class="editor-section">
+              <div class="section-heading">
+                <div>
+                  <h3>Walls <em>optional</em></h3>
+                  <p>Work that feels productive but doesn’t move the metric.</p>
+                </div>
+              </div>
+
+              <label class="field">
+                <span>One per line</span>
+                <textarea
+                  id="goal-walls"
+                  rows="4"
+                  placeholder="Inbox zero&#10;Tool shopping&#10;Research spiral"
+                ></textarea>
+              </label>
+            </section>
+          </div>
+
+          <div class="modal-footer">
+            <p class="form-error" id="goal-error" role="alert" hidden></p>
+            <div class="modal-footer-actions">
+              <button type="button" class="secondary-button" id="goal-cancel">Cancel</button>
+              <button type="submit" class="submit-button compact" id="goal-submit">
+                Create
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m4 12.5 5 5L20 6.5" />
+      </svg>
+      <span id="toast-message"></span>
+    </div>
+  </body>
+</html>
