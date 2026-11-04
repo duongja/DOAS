@@ -110,7 +110,9 @@ The repository includes a Vercel configuration for a single Express function plu
 
 ### 1. Import the repo
 
-Import `https://github.com/duongja/DOAS` in Vercel. The included `vercel.json` supplies the build and output settings. If the dashboard asks for a framework preset, **Other** or **Vite** both work; the explicit build command/output directory takes precedence.
+Import `https://github.com/duongja/DOAS` in Vercel. The included `vercel.json` supplies the build and output settings.
+
+Choose **Vite** as the Framework Preset, not Express. This repo is a static Vite frontend plus an explicit serverless API function; the Vite preset preserves the static pages while Vercel builds `api/index.ts` separately.
 
 ### 2. Add environment variables
 
