@@ -102,6 +102,13 @@ npm start
 
 ## Deploying to Vercel (Hobby)
 
+### Live deployment
+
+- **Production:** https://doas-nu.vercel.app
+- **Vercel project:** `nashons-projects/doas`
+- **Framework preset:** Vite
+- **Deployment protection:** Vercel Authentication is enabled; sign in with the Vercel account that owns the project.
+
 The repository includes a Vercel configuration for a single Express function plus static Vite pages:
 
 - `vercel.json` — builds the client to `dist/client`, routes `/api/*` to `api/index.js`, and gives the function 300 seconds / 1 GB.
@@ -126,8 +133,9 @@ Set these in **Project → Settings → Environment Variables** for Production, 
 | `OPENCODE_BASE_URL` | `https://opencode.ai/inference/go/openai/v1` or your OpenCode endpoint |
 | `OPENCODE_SESSION_ID` | `diaries-of-a-soldier` when using the Go endpoint |
 | `OPENCODE_TIMEOUT_MS` | `60000` (optional) |
-| `NODE_ENV` | `production` |
 | `CORS_ORIGIN` | Optional; same-origin requests are allowed automatically |
+
+Vercel sets `NODE_ENV=production` automatically; do not add it manually.
 
 Do **not** upload `.env`; `.vercelignore` excludes it. All secrets belong in Vercel’s environment settings.
 
@@ -154,8 +162,8 @@ Or connect the GitHub repository in the Vercel dashboard and redeploy from `main
 
 ### Verify after deploy
 
-- `GET https://<deployment>/api/health` → `{ status: "ok", database: "connected" }`
-- Open `/` for the assistant and `/dashboard.html` for the sprint planner.
+- `GET https://doas-nu.vercel.app/api/health` → `{ status: "ok", database: "connected" }`
+- Open `https://doas-nu.vercel.app/` for the assistant and `https://doas-nu.vercel.app/dashboard.html` for the sprint planner.
 
 ---
 
