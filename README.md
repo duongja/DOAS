@@ -134,6 +134,20 @@ Vercel serves the manifest with `application/manifest+json` and disables long-li
 
 ---
 
+## Plan history
+
+The dashboard has four views:
+
+- **Today** — today's deliverable list, plus an overdue count when older planned items still need attention.
+- **This week** / **This month** — the active sprint windows.
+- **History** — every past day with its deliverables, newest first.
+
+Rescheduling is additive. When a deliverable's `plannedDate` changes, the server appends `{ date, movedTo, movedAt }` to `plannedDateHistory`; the original day stays in **History** marked **Moved to …** instead of disappearing. Today's/current entries remain editable; archived moved entries are read-only.
+
+Deleting a deliverable still removes it permanently; use **History** to review past days before deleting.
+
+---
+
 ## Deploying to Vercel (Hobby)
 
 ### Live deployment
