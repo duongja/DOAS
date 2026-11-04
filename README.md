@@ -35,7 +35,7 @@ The UI is pure HTML + CSS + client-side TypeScript — no React, no localStorage
 | Client | Vanilla HTML, CSS, TypeScript, native `fetch()` |
 | Dev runner | `ts-node-dev` + Vite (proxy `/api` → Express) |
 | Production | Compiled Express server serves `dist/client` |
-| Vercel | Single Express Function (`api/index.ts`) + static Vite output |
+| Vercel | Single Express Function (`api/index.js`) + static Vite output |
 
 ---
 
@@ -104,15 +104,15 @@ npm start
 
 The repository includes a Vercel configuration for a single Express function plus static Vite pages:
 
-- `vercel.json` — builds the client to `dist/client`, routes `/api/*` to `api/index.ts`, and gives the function 300 seconds / 1 GB.
-- `api/index.ts` — Vercel serverless entrypoint; reuses one MongoDB connection across fluid invocations.
+- `vercel.json` — builds the client to `dist/client`, routes `/api/*` to `api/index.js`, and gives the function 300 seconds / 1 GB.
+- `api/index.js` — CommonJS Vercel serverless entrypoint; requires the compiled `dist/server.js` and reuses one MongoDB connection across fluid invocations.
 - `src/server.ts` — skips `app.listen` and static serving when `VERCEL` is set.
 
 ### 1. Import the repo
 
 Import `https://github.com/duongja/DOAS` in Vercel. The included `vercel.json` supplies the build and output settings.
 
-Choose **Vite** as the Framework Preset, not Express. This repo is a static Vite frontend plus an explicit serverless API function; the Vite preset preserves the static pages while Vercel builds `api/index.ts` separately.
+Choose **Vite** as the Framework Preset, not Express. This repo is a static Vite frontend plus an explicit serverless API function; the Vite preset preserves the static pages while Vercel builds `api/index.js` separately.
 
 ### 2. Add environment variables
 
@@ -206,8 +206,7 @@ src/styles.css              tactical dashboard UI
 vite.config.mts             multi-page Vite build + API proxy
 tsconfig.json               browser/client TypeScript
 tsconfig.server.json        Node/server TypeScript
-tsconfig.api.json           Vercel function TypeScript
-api/index.ts                Vercel serverless entrypoint
+api/index.js                Vercel CommonJS serverless entrypoint
 vercel.json                 Vercel build, function, and rewrite config
 .vercelignore               excludes env files from deployment uploads
 ```
