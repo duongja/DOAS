@@ -18,6 +18,7 @@ Every debrief is still evaluated **on the server**. The browser sends only raw d
 
 The UI is pure HTML + CSS + client-side TypeScript — no React, no localStorage.
 
+- `/login.html` — operator sign-in
 - `/` — assistant / second brain
 - `/dashboard.html` — mission console for direct manual oversight
 
@@ -100,6 +101,22 @@ npm start
 
 ---
 
+## Authentication
+
+The app has a single server-side operator account:
+
+- Sign in at `/login.html`.
+- Email defaults to `nashonsagate@gmail.com`; set `AUTH_EMAIL` to override it.
+- The password is stored as a scrypt hash in `src/auth.ts`; the plaintext password is never shipped to the browser.
+- Sessions are signed, HttpOnly, SameSite=Lax cookies with a 7-day lifetime.
+- All data API routes require a session. `/api/health` and the auth routes are public.
+- `POST /api/auth/logout` clears the cookie; the app pages also expose a **Sign out** control.
+- Login attempts are rate-limited to 8 per 15 minutes per function instance.
+
+Set a long random `SESSION_SECRET` in `.env` and in Vercel. Changing it invalidates all existing sessions. If it is omitted locally, the server uses a development fallback; production should always set it.
+
+---
+
 ## Deploying to Vercel (Hobby)
 
 ### Live deployment
@@ -133,6 +150,8 @@ Set these in **Project → Settings → Environment Variables** for Production, 
 | `OPENCODE_BASE_URL` | `https://opencode.ai/inference/go/openai/v1` or your OpenCode endpoint |
 | `OPENCODE_SESSION_ID` | `diaries-of-a-soldier` when using the Go endpoint |
 | `OPENCODE_TIMEOUT_MS` | `60000` (optional) |
+| `SESSION_SECRET` | Long random secret used to sign session cookies |
+| `AUTH_EMAIL` | Optional; overrides the hardcoded operator email |
 | `CORS_ORIGIN` | Optional; same-origin requests are allowed automatically |
 
 Vercel sets `NODE_ENV=production` automatically; do not add it manually.
@@ -157,7 +176,7 @@ Or connect the GitHub repository in the Vercel dashboard and redeploy from `main
 
 - Function duration: **300 seconds** maximum (configured in both `vercel.json` and the function).
 - Function memory: **1 GB** (configured in `vercel.json`).
-- One API function handles all `/api/*` routes; the two HTML pages and assets are static CDN files.
+- One API function handles all `/api/*` routes; the three HTML pages and assets are static CDN files.
 - The assistant can take several seconds because it may call the model multiple times; the 300-second allowance covers normal tool loops.
 
 ### Verify after deploy
@@ -199,6 +218,8 @@ src/
     assistant.ts            assistant + project + memory contracts
   client/
     api.ts                  typed fetch wrapper for mission + assistant APIs
+    auth.ts                 browser session guard, redirect, and logout
+  auth.ts                   server session signing, login, and route guard
   lib/
     date.ts                 local/UTC date + timestamp formatting
     format.ts               impact/coefficient/effort formatting
@@ -207,10 +228,13 @@ src/
   server.ts                 Express app, validation, routes, startup
   main.ts                   dashboard client controller
   assistant.ts              chat + memory-drawer controller
+  login.ts                  sign-in form controller
 index.html                  minimal assistant shell
 dashboard.html              mission console shell
+login.html                  operator sign-in shell
 src/assistant.css           minimal chat + memory drawer UI
 src/styles.css              tactical dashboard UI
+src/login.css               sign-in UI
 vite.config.mts             multi-page Vite build + API proxy
 tsconfig.json               browser/client TypeScript
 tsconfig.server.json        Node/server TypeScript
