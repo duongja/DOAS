@@ -1,0 +1,12 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: diaries-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - diaries_mongo_data:/data/db
+
+volumes:
+  diaries_mongo_data:
