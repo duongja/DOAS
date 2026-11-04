@@ -75,17 +75,24 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://1
 
 let databaseReady: Promise<void> | null = null;
 
+function clearDatabaseReady(): void {
+  databaseReady = null;
+}
+
 mongoose.connection.on('error', (error: unknown) => {
   console.error('[db] MongoDB error:', error);
 });
+mongoose.connection.on('disconnected', clearDatabaseReady);
+mongoose.connection.on('close', clearDatabaseReady);
 
-/**
- * Connect once per process and reuse the connection across local requests and
- * Vercel Fluid invocations. The legacy migration runs only after a fresh
- * connection.
- */
-export async function ensureDatabase(): Promise<void> {
+async function connectDatabase(): Promise<void> {
   if (mongoose.connection.readyState === 1) return;
+
+  // A previous attempt can resolve and then lose its socket. Never await a
+  // stale resolved promise while the connection is down.
+  if (databaseReady && mongoose.connection.readyState !== 2) {
+    databaseReady = null;
+  }
 
   if (!databaseReady) {
     mongoose.set('strictQuery', true);
@@ -109,6 +116,22 @@ export async function ensureDatabase(): Promise<void> {
   if (Number(mongoose.connection.readyState) !== 1) {
     databaseReady = null;
     throw new Error('MongoDB connection is not ready.');
+  }
+}
+
+/**
+ * Connect once per process and reuse the connection across local requests and
+ * Vercel Fluid invocations. A cold Atlas TLS handshake can fail once after an
+ * allowlist or network change, so retry before surfacing the error.
+ */
+export async function ensureDatabase(): Promise<void> {
+  try {
+    await connectDatabase();
+  } catch {
+    databaseReady = null;
+    console.warn('[db] First connection attempt failed; retrying once.');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await connectDatabase();
   }
 }
 

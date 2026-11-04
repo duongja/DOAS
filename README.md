@@ -111,7 +111,7 @@ npm start
 
 The repository includes a Vercel configuration for a single Express function plus static Vite pages:
 
-- `vercel.json` — builds the client to `dist/client`, routes `/api/*` to `api/index.js`, and gives the function 300 seconds / 1 GB.
+- `vercel.json` — builds the client to `dist/client`, routes `/api/*` to `api/index.js`, pins the function to `lhr1` so every invocation uses one Atlas egress path, and gives the function 300 seconds / 1 GB.
 - `api/index.js` — CommonJS Vercel serverless entrypoint; requires the compiled `dist/server.js` and reuses one MongoDB connection across fluid invocations.
 - `src/server.ts` — skips `app.listen` and static serving when `VERCEL` is set.
 
